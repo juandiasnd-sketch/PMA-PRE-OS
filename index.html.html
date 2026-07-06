@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Conformidade de Preços — PMA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0F1720;
+    --surface: #16212C;
+    --surface-2: #1C2A36;
+    --border: #24313D;
+    --text: #E8EDF2;
+    --text-muted: #8B9AA8;
+    --accent: #E8A33D;
+    --accent-soft: rgba(232,163,61,0.12);
+    --danger: #E5484D;
+    --danger-soft: rgba(229,72,77,0.12);
+    --success: #3DD68C;
+    --success-soft: rgba(61,214,140,0.12);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding: 32px 24px 80px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;}
+
+  /* Header */
+  .header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:24px;
+    margin-bottom:32px;
+    flex-wrap:wrap;
+  }
+  .header h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:28px;
+    font-weight:700;
+    margin:0 0 6px;
+    letter-spacing:-0.02em;
+  }
+  .header p{
+    color:var(--text-muted);
+    margin:0;
+    font-size:14px;
+    max-width:520px;
+    line-height:1.5;
+  }
+
+  /* Stamp signature element */
+  .stamp{
+    border:2px solid var(--accent);
+    color:var(--accent);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    padding:10px 16px;
+    border-radius:6px;
+    transform:rotate(-4deg);
+    white-space:nowrap;
+    position:relative;
+    flex-shrink:0;
+    background: var(--accent-soft);
+  }
+  .stamp::before{
+    content:"";
+    position:absolute;
+    inset:3px;
+    border:1px solid var(--accent);
+    border-radius:3px;
+    opacity:0.5;
+  }
+
+  /* Shared banner */
+  .shared-banner{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--accent-soft);
+    border:1px solid var(--accent);
+    color:var(--accent);
+    padding:10px 14px;
+    border-radius:8px;
+    font-size:12px;
+    margin-bottom:20px;
+  }
+
+  /* Summary cards */
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px,1fr));
+    gap:16px;
+    margin-bottom:28px;
+  }
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:18px 20px;
+  }
+  .card .label{
+    font-size:12px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    margin-bottom:8px;
+  }
+  .card .value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:26px;
+    font-weight:600;
+  }
+  .card .value.danger{color:var(--danger);}
+  .card .sub{font-size:12px;color:var(--text-muted);margin-top:4px;}
+
+  /* Toolbar */
+  .toolbar{
+    display:flex;
+    gap:12px;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .toolbar input[type="text"], .toolbar select{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 12px;
+    border-radius:8px;
+    font-size:13px;
+    font-family:'Inter', sans-serif;
+  }
+  .toolbar input[type="text"]{width:220px;}
+  .toolbar input:focus, .toolbar select:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .spacer{flex:1;}
+  .btn{
+    background:var(--accent);
+    color:#241705;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    font-family:'Inter', sans-serif;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:focus-visible{outline:2px solid #fff; outline-offset:2px;}
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text);
+  }
+  .btn-ghost:hover{background:var(--surface-2);}
+  .btn:disabled{opacity:0.6; cursor:not-allowed;}
+
+  /* Table */
+  .table-wrap{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    overflow-x:auto;
+  }
+  table{width:100%;border-collapse:collapse;min-width:1220px;}
+  thead th{
+    text-align:left;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-muted);
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  tbody td{
+    padding:14px 16px;
+    border-bottom:1px solid var(--border);
+    font-size:13px;
+    vertical-align:middle;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.violation{background:linear-gradient(90deg, var(--danger-soft), transparent 40%);}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .loja-name{font-weight:600;}
+  .produto-cell{
+    max-width:220px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:var(--text-muted);
+  }
+  a.link-pill{
+    color:var(--accent);
+    text-decoration:none;
+    font-size:12px;
+    border:1px solid var(--border);
+    padding:4px 9px;
+    border-radius:6px;
+    display:inline-block;
+  }
+  a.link-pill:hover{background:var(--surface-2);}
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:5px 10px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .badge.danger{background:var(--danger-soft); color:var(--danger);}
+  .badge.success{background:var(--success-soft); color:var(--success);}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .pct{font-weight:600;}
+  .pct.danger{color:var(--danger);}
+  .pct.success{color:var(--success);}
+  .row-actions{display:flex;gap:6px;}
+  .icon-btn{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    width:30px;height:30px;
+    border-radius:6px;
+    cursor:pointer;
+    font-size:14px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .icon-btn:hover{color:var(--text); background:var(--surface-2);}
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--text-muted);
+  }
+  .empty h3{color:var(--text); font-family:'Space Grotesk', sans-serif; margin-bottom:6px;}
+
+  /* Modal */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(6,10,14,0.6);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    width:100%;
+    max-width:460px;
+    padding:26px;
+  }
+  .modal h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:19px;
+    margin:0 0 20px;
+  }
+  .field{margin-bottom:16px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-bottom:6px;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+  }
+  .field input{
+    width:100%;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:10px 12px;
+    border-radius:8px;
+    font-size:14px;
+    font-family:'Inter', sans-serif;
+  }
+  .field input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;}
+  .error-text{color:var(--danger); font-size:12px; margin-top:6px;}
+
+  .toast{
+    position:fixed;
+    bottom:24px; left:50%;
+    transform:translateX(-50%);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    padding:12px 20px;
+    border-radius:8px;
+    font-size:13px;
+    display:none;
+    z-index:60;
+  }
+  .toast.show{display:block;}
+
+  ::selection{background:var(--accent-soft);}
+
+  @media (max-width:640px){
+    .field-row{grid-template-columns:1fr;}
+    .header{flex-direction:column;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div>
+      <h1>Painel de Conformidade de Preços</h1>
+      <p>Acompanhe se os anúncios das lojas estão respeitando o PMA (Preço Mínimo Autorizado) e monitore a margem real de cada vendedor.</p>
+    </div>
+    <div class="stamp">Auditoria de anúncios</div>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">Itens monitorados</div>
+      <div class="value" id="cardTotal">—</div>
+    </div>
+    <div class="card">
+      <div class="label">Fora do PMA</div>
+      <div class="value danger" id="cardFora">—</div>
+      <div class="sub" id="cardForaSub"></div>
+    </div>
+    <div class="card">
+      <div class="label">Loja mais crítica</div>
+      <div class="value" id="cardLoja" style="font-size:18px;">—</div>
+      <div class="sub" id="cardLojaSub"></div>
+    </div>
+    <div class="card">
+      <div class="label">Margem real média</div>
+      <div class="value" id="cardMargem">—</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="searchInput" placeholder="Buscar loja ou produto...">
+    <select id="filterStatus">
+      <option value="todos">Todos os status</option>
+      <option value="fora">Fora do PMA</option>
+      <option value="dentro">Dentro do PMA</option>
+    </select>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btnAtualizar" title="Buscar itens adicionados por outras pessoas">↻ Atualizar</button>
+    <button class="btn" id="btnNovo">+ Novo item</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Loja</th>
+          <th>Produto</th>
+          <th>Link</th>
+          <th>PMA</th>
+          <th>Preço anunciado</th>
+          <th>% fora do PMA</th>
+          <th>Custo</th>
+          <th>Margem (R$)</th>
+          <th>Margem real</th>
+          <th>Novo custo</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;">
+      <h3>Nenhum item cadastrado</h3>
+      <p>Clique em "+ Novo item" para começar a monitorar os anúncios.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">Novo item</h2>
+    <div class="field">
+      <label>Loja</label>
+      <input type="text" id="fLoja" placeholder="Ex: Loja XYZ">
+    </div>
+    <div class="field">
+      <label>Título do anúncio / produto</label>
+      <input type="text" id="fTitulo" placeholder="Ex: Fone de Ouvido Bluetooth XYZ 200mAh">
+    </div>
+    <div class="field">
+      <label>Link do anúncio</label>
+      <input type="text" id="fLink" placeholder="https://...">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Preço PMA (R$)</label>
+        <input type="text" id="fPma" inputmode="decimal" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label>Preço anunciado (R$)</label>
+        <input type="text" id="fPreco" inputmode="decimal" placeholder="0,00">
+      </div>
+    </div>
+    <div class="field">
+      <label>Custo do produto (R$)</label>
+      <input type="text" id="fCusto" inputmode="decimal" placeholder="0,00">
+    </div>
+    <div class="error-text" id="formError" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCancelar">Cancelar</button>
+      <button class="btn" id="btnSalvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+// ======================================================
+// CONFIGURAÇÃO DO FIREBASE
+// Cole aqui o firebaseConfig que você copiou do Console
+// do Firebase (Configurações do projeto > Seus apps > Web).
+// ======================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB0hoIb9t4A1KZd_nltTH6TGEGfDmPV6-0",
+  authDomain: "painel-pma.firebaseapp.com",
+  projectId: "painel-pma",
+  storageBucket: "painel-pma.firebasestorage.app",
+  messagingSenderId: "486041046020",
+  appId: "1:486041046020:web:2facbe65168162db5e7951"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const itemsDocRef = doc(db, "pma", "items");
+
+let items = [];
+let editingId = null;
+
+const fmtBRL = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
+function fmtPct(n){ return (n>0?'+':'') + n.toFixed(1) + '%'; }
+function parseNum(v){
+  if(typeof v !== 'string') return NaN;
+  const cleaned = v.replace(/\./g,'').replace(',','.').trim();
+  return parseFloat(cleaned);
+}
+function uid(){ return 'i_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7); }
+
+function calc(item){
+  const pctForaPMA = item.pma > 0 ? ((item.pma - item.preco) / item.pma) * 100 : 0;
+  const margem = item.preco - item.custo;
+  const margemRealPct = item.custo > 0 ? ((item.preco - item.custo) / item.custo) * 100 : 0;
+  const divisor = 1 + (margemRealPct/100);
+  const novoCusto = divisor !== 0 ? item.pma / divisor : 0;
+  const fora = item.preco < item.pma;
+  return { pctForaPMA, margem, margemRealPct, novoCusto, fora };
+}
+
+async function fetchLatestItems(){
+  try{
+    const snap = await getDoc(itemsDocRef);
+    return snap.exists() && Array.isArray(snap.data().list) ? snap.data().list : [];
+  }catch(e){
+    return items; // se falhar, mantém o que já está na tela
+  }
+}
+
+async function loadItems(){
+  items = await fetchLatestItems();
+  render();
+}
+
+async function saveItems(){
+  try{
+    await setDoc(itemsDocRef, { list: items });
+  }catch(e){
+    showToast('Não foi possível salvar. Verifique a configuração do Firebase.');
+  }
+}
+
+// Mantém a tela sincronizada em tempo real: quando outra pessoa
+// adicionar/editar/excluir um item, a tabela atualiza sozinha.
+onSnapshot(itemsDocRef, (snap)=>{
+  items = snap.exists() && Array.isArray(snap.data().list) ? snap.data().list : [];
+  render();
+}, (err)=>{
+  showToast('Não foi possível conectar ao Firebase. Verifique a configuração.');
+});
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+function openModal(item){
+  editingId = item ? item.id : null;
+  document.getElementById('modalTitle').textContent = item ? 'Editar item' : 'Novo item';
+  document.getElementById('fLoja').value = item ? item.loja : '';
+  document.getElementById('fTitulo').value = item ? (item.titulo||'') : '';
+  document.getElementById('fLink').value = item ? item.link : '';
+  document.getElementById('fPma').value = item ? String(item.pma).replace('.',',') : '';
+  document.getElementById('fPreco').value = item ? String(item.preco).replace('.',',') : '';
+  document.getElementById('fCusto').value = item ? String(item.custo).replace('.',',') : '';
+  document.getElementById('formError').style.display = 'none';
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('fLoja').focus();
+}
+function closeModal(){
+  document.getElementById('overlay').classList.remove('open');
+}
+
+async function handleSave(){
+  const loja = document.getElementById('fLoja').value.trim();
+  const titulo = document.getElementById('fTitulo').value.trim();
+  const link = document.getElementById('fLink').value.trim();
+  const pma = parseNum(document.getElementById('fPma').value);
+  const preco = parseNum(document.getElementById('fPreco').value);
+  const custo = parseNum(document.getElementById('fCusto').value);
+  const errEl = document.getElementById('formError');
+
+  if(!loja || !link || isNaN(pma) || isNaN(preco) || isNaN(custo) || pma<=0 || preco<=0 || custo<0){
+    errEl.textContent = 'Preencha loja, link e valores numéricos válidos (use vírgula, ex: 199,90).';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // busca a versão mais recente antes de salvar, para não sobrescrever o que outra pessoa acabou de adicionar
+  items = await fetchLatestItems();
+
+  if(editingId){
+    const idx = items.findIndex(i=>i.id===editingId);
+    if(idx>-1) items[idx] = {...items[idx], loja, titulo, link, pma, preco, custo};
+  } else {
+    items.push({ id: uid(), loja, titulo, link, pma, preco, custo });
+  }
+  await saveItems();
+  closeModal();
+  render();
+  showToast('Item salvo.');
+}
+
+async function handleDelete(id){
+  if(!confirm('Excluir este item?')) return;
+  items = await fetchLatestItems();
+  items = items.filter(i=>i.id!==id);
+  await saveItems();
+  render();
+  showToast('Item excluído.');
+}
+
+function render(){
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filter = document.getElementById('filterStatus').value;
+
+  const filtered = items.filter(it=>{
+    const matchesSearch = !search || it.loja.toLowerCase().includes(search) || (it.titulo||'').toLowerCase().includes(search);
+    const c = calc(it);
+    const matchesFilter = filter==='todos' || (filter==='fora' && c.fora) || (filter==='dentro' && !c.fora);
+    return matchesSearch && matchesFilter;
+  });
+
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  document.getElementById('emptyState').style.display = items.length===0 ? 'block' : 'none';
+  document.getElementById('dataTable').style.display = items.length===0 ? 'none' : 'table';
+
+  filtered.forEach(it=>{
+    const c = calc(it);
+    const tr = document.createElement('tr');
+    if(c.fora) tr.classList.add('violation');
+    tr.innerHTML = `
+      <td class="loja-name">${escapeHtml(it.loja)}</td>
+      <td class="produto-cell" title="${escapeAttr(it.titulo||'')}">${escapeHtml(it.titulo||'—')}</td>
+      <td><a class="link-pill" href="${escapeAttr(it.link)}" target="_blank" rel="noopener">Ver anúncio ↗</a></td>
+      <td class="mono">${fmtBRL.format(it.pma)}</td>
+      <td class="mono">${fmtBRL.format(it.preco)}</td>
+      <td class="mono pct ${c.fora?'danger':'success'}">${fmtPct(c.pctForaPMA)}</td>
+      <td class="mono">${fmtBRL.format(it.custo)}</td>
+      <td class="mono">${fmtBRL.format(c.margem)}</td>
+      <td class="mono">${c.margemRealPct.toFixed(1)}%</td>
+      <td class="mono">${fmtBRL.format(c.novoCusto)}</td>
+      <td><span class="badge ${c.fora?'danger':'success'}">${c.fora?'Fora do PMA':'Dentro do PMA'}</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" title="Editar" data-edit="${it.id}">✎</button>
+          <button class="icon-btn" title="Excluir" data-del="${it.id}">🗑</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const item = items.find(i=>i.id===btn.dataset.edit);
+      openModal(item);
+    });
+  });
+  tbody.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>handleDelete(btn.dataset.del));
+  });
+
+  renderCards();
+}
+
+function renderCards(){
+  document.getElementById('cardTotal').textContent = items.length;
+
+  const foraItems = items.filter(i=>calc(i).fora);
+  document.getElementById('cardFora').textContent = foraItems.length;
+  document.getElementById('cardForaSub').textContent = items.length
+    ? Math.round((foraItems.length/items.length)*100) + '% dos itens'
+    : '';
+
+  if(foraItems.length){
+    const counts = {};
+    foraItems.forEach(i=>{ counts[i.loja] = (counts[i.loja]||0)+1; });
+    const topLoja = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('cardLoja').textContent = topLoja[0];
+    document.getElementById('cardLojaSub').textContent = topLoja[1] + ' item(ns) fora do PMA';
+  } else {
+    document.getElementById('cardLoja').textContent = '—';
+    document.getElementById('cardLojaSub').textContent = items.length ? 'Nenhuma violação' : '';
+  }
+
+  if(items.length){
+    const avg = items.reduce((s,i)=>s+calc(i).margemRealPct,0)/items.length;
+    document.getElementById('cardMargem').textContent = avg.toFixed(1) + '%';
+  } else {
+    document.getElementById('cardMargem').textContent = '—';
+  }
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(s){ return escapeHtml(s); }
+
+document.getElementById('btnNovo').addEventListener('click', ()=>openModal(null));
+document.getElementById('btnCancelar').addEventListener('click', closeModal);
+document.getElementById('btnSalvar').addEventListener('click', handleSave);
+document.getElementById('btnAtualizar').addEventListener('click', ()=>{ loadItems(); showToast('Lista atualizada.'); });
+document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
+document.getElementById('searchInput').addEventListener('input', render);
+document.getElementById('filterStatus').addEventListener('change', render);
+
+loadItems();
+</script>
+</body>
+</html>
