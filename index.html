@@ -360,6 +360,7 @@
       <option value="dentro">Dentro do PMA</option>
     </select>
     <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btnRelatorio" title="Gera um PDF com os itens filtrados abaixo">📄 Gerar relatório PDF</button>
     <button class="btn btn-ghost" id="btnAtualizar" title="Buscar itens adicionados por outras pessoas">↻ Atualizar</button>
     <button class="btn" id="btnNovo">+ Novo item</button>
   </div>
@@ -434,6 +435,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script type="module">
 // ======================================================
@@ -576,16 +579,20 @@ async function handleDelete(id){
   showToast('Item excluído.');
 }
 
-function render(){
+function getFilteredItems(){
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
   const filter = document.getElementById('filterStatus').value;
 
-  const filtered = items.filter(it=>{
+  return items.filter(it=>{
     const matchesSearch = !search || it.loja.toLowerCase().includes(search) || (it.titulo||'').toLowerCase().includes(search);
     const c = calc(it);
     const matchesFilter = filter==='todos' || (filter==='fora' && c.fora) || (filter==='dentro' && !c.fora);
     return matchesSearch && matchesFilter;
   });
+}
+
+function render(){
+  const filtered = getFilteredItems();
 
   const tbody = document.getElementById('tbody');
   tbody.innerHTML = '';
@@ -629,6 +636,89 @@ function render(){
   });
 
   renderCards();
+}
+
+function gerarRelatorioPDF(){
+  const filtered = getFilteredItems();
+
+  if(filtered.length===0){
+    showToast('Nenhum item para incluir no relatório com os filtros atuais.');
+    return;
+  }
+  if(typeof window.jspdf === 'undefined'){
+    showToast('Não foi possível carregar o gerador de PDF. Verifique sua conexão.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const marginX = 40;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  let y = 50;
+
+  const searchTerm = document.getElementById('searchInput').value.trim();
+  const filterStatus = document.getElementById('filterStatus').value;
+  const filtroStatusTexto = filterStatus==='fora' ? 'Fora do PMA' : filterStatus==='dentro' ? 'Dentro do PMA' : 'Todos os status';
+
+  function novaLinha(altura){
+    if(y + altura > pageHeight - 40){
+      doc.addPage();
+      y = 50;
+    }
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('Relatório de Conformidade de Preços — PMA', marginX, y);
+  y += 20;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(100);
+  doc.text(`Filtro de busca: ${searchTerm || '(nenhum)'}   •   Status: ${filtroStatusTexto}`, marginX, y);
+  y += 13;
+  doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}   •   ${filtered.length} item(ns)`, marginX, y);
+  doc.setTextColor(0);
+  y += 24;
+
+  filtered.forEach((it, idx)=>{
+    const c = calc(it);
+    novaLinha(70);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`${idx+1}. ${it.loja}`, marginX, y);
+    y += 14;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    const tituloLinhas = doc.splitTextToSize(`Produto: ${it.titulo || '—'}`, pageWidth - marginX*2);
+    doc.text(tituloLinhas, marginX, y);
+    y += tituloLinhas.length * 12;
+
+    doc.text(`PMA: ${fmtBRL.format(it.pma)}    Preço anunciado: ${fmtBRL.format(it.preco)}    % fora do PMA: ${fmtPct(c.pctForaPMA)}`, marginX, y);
+    y += 13;
+
+    if(c.fora){ doc.setTextColor(229,72,77); } else { doc.setTextColor(61,214,140); }
+    doc.setFont('helvetica', 'bold');
+    doc.text(c.fora ? 'Status: FORA DO PMA' : 'Status: Dentro do PMA', marginX, y);
+    doc.setTextColor(0);
+    y += 14;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(232,163,61);
+    doc.textWithLink('Ver anúncio ↗ (clique para acessar)', marginX, y, { url: it.link });
+    doc.setTextColor(0);
+    y += 10;
+
+    doc.setDrawColor(220);
+    doc.line(marginX, y+6, pageWidth - marginX, y+6);
+    y += 22;
+  });
+
+  doc.save(`relatorio-pma-${Date.now()}.pdf`);
+  showToast('Relatório PDF gerado.');
 }
 
 function renderCards(){
@@ -716,6 +806,7 @@ document.getElementById('btnBuscarPreco').addEventListener('click', buscarPrecoM
 document.getElementById('btnNovo').addEventListener('click', ()=>openModal(null));
 document.getElementById('btnCancelar').addEventListener('click', closeModal);
 document.getElementById('btnSalvar').addEventListener('click', handleSave);
+document.getElementById('btnRelatorio').addEventListener('click', gerarRelatorioPDF);
 document.getElementById('btnAtualizar').addEventListener('click', ()=>{ loadItems(); showToast('Lista atualizada.'); });
 document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
 document.getElementById('searchInput').addEventListener('input', render);
