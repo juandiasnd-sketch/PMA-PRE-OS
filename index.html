@@ -791,9 +791,20 @@ async function buscarPrecoML(){
   statusEl.style.color = 'var(--text-muted)';
 
   try{
-    const res = await fetch(`https://api.mercadolibre.com/items/${itemId}`);
+    // A API do Mercado Livre bloqueia chamadas diretas do navegador (CORS),
+    // então passamos por um serviço intermediário gratuito que repassa a
+    // resposta com as permissões corretas.
+    const apiUrl = `https://api.mercadolibre.com/items/${itemId}`;
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(apiUrl)}`;
+    const res = await fetch(proxyUrl);
     if(!res.ok) throw new Error('not ok');
     const data = await res.json();
+
+    if(data.error || data.status === 404){
+      statusEl.textContent = 'Anúncio não encontrado (pode estar pausado ou removido). Preencha manualmente.';
+      statusEl.style.color = 'var(--danger)';
+      return;
+    }
 
     if(typeof data.price !== 'number'){
       statusEl.textContent = 'Não encontrei o preço deste anúncio. Preencha manualmente.';
