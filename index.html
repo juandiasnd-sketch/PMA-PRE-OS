@@ -347,6 +347,11 @@
       <div class="sub" id="cardLojaSub"></div>
     </div>
     <div class="card">
+      <div class="label">Supervisor mais crítico</div>
+      <div class="value" id="cardSupervisor" style="font-size:18px;">—</div>
+      <div class="sub" id="cardSupervisorSub"></div>
+    </div>
+    <div class="card">
       <div class="label">Margem real média</div>
       <div class="value" id="cardMargem">—</div>
     </div>
@@ -772,6 +777,18 @@ function renderCards(){
   } else {
     document.getElementById('cardLoja').textContent = '—';
     document.getElementById('cardLojaSub').textContent = items.length ? 'Nenhuma violação' : '';
+  }
+
+  const foraComSupervisor = foraItems.filter(i=>(i.supervisor||'').trim());
+  if(foraComSupervisor.length){
+    const countsSup = {};
+    foraComSupervisor.forEach(i=>{ countsSup[i.supervisor] = (countsSup[i.supervisor]||0)+1; });
+    const topSupervisor = Object.entries(countsSup).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('cardSupervisor').textContent = topSupervisor[0];
+    document.getElementById('cardSupervisorSub').textContent = topSupervisor[1] + ' item(ns) fora do PMA';
+  } else {
+    document.getElementById('cardSupervisor').textContent = '—';
+    document.getElementById('cardSupervisorSub').textContent = items.length ? 'Nenhuma violação com supervisor definido' : '';
   }
 
   if(items.length){
