@@ -359,6 +359,9 @@
       <option value="fora">Fora do PMA</option>
       <option value="dentro">Dentro do PMA</option>
     </select>
+    <select id="filterSupervisor">
+      <option value="todos">Todos os supervisores</option>
+    </select>
     <div class="spacer"></div>
     <button class="btn btn-ghost" id="btnRelatorio" title="Gera um PDF com os itens filtrados abaixo">📄 Gerar relatório PDF</button>
     <button class="btn btn-ghost" id="btnAtualizar" title="Buscar itens adicionados por outras pessoas">↻ Atualizar</button>
@@ -373,6 +376,7 @@
           <th>Produto</th>
           <th>Status</th>
           <th>Marketplace</th>
+          <th>Supervisor</th>
           <th>Link</th>
           <th>PMA</th>
           <th>Preço anunciado</th>
@@ -400,6 +404,10 @@
     <div class="field">
       <label>Loja</label>
       <input type="text" id="fLoja" placeholder="Ex: Loja XYZ">
+    </div>
+    <div class="field">
+      <label>Supervisor</label>
+      <input type="text" id="fSupervisor" placeholder="Ex: João Silva">
     </div>
     <div class="field">
       <label>Título do anúncio / produto</label>
@@ -527,6 +535,7 @@ function openModal(item){
   editingId = item ? item.id : null;
   document.getElementById('modalTitle').textContent = item ? 'Editar item' : 'Novo item';
   document.getElementById('fLoja').value = item ? item.loja : '';
+  document.getElementById('fSupervisor').value = item ? (item.supervisor||'') : '';
   document.getElementById('fTitulo').value = item ? (item.titulo||'') : '';
   document.getElementById('fLink').value = item ? item.link : '';
   document.getElementById('fPma').value = item ? String(item.pma).replace('.',',') : '';
@@ -543,6 +552,7 @@ function closeModal(){
 
 async function handleSave(){
   const loja = document.getElementById('fLoja').value.trim();
+  const supervisor = document.getElementById('fSupervisor').value.trim();
   const titulo = document.getElementById('fTitulo').value.trim();
   const link = document.getElementById('fLink').value.trim();
   const pma = parseNum(document.getElementById('fPma').value);
@@ -561,9 +571,9 @@ async function handleSave(){
 
   if(editingId){
     const idx = items.findIndex(i=>i.id===editingId);
-    if(idx>-1) items[idx] = {...items[idx], loja, titulo, link, pma, preco, custo};
+    if(idx>-1) items[idx] = {...items[idx], loja, supervisor, titulo, link, pma, preco, custo};
   } else {
-    items.push({ id: uid(), loja, titulo, link, pma, preco, custo });
+    items.push({ id: uid(), loja, supervisor, titulo, link, pma, preco, custo });
   }
   await saveItems();
   closeModal();
@@ -583,16 +593,34 @@ async function handleDelete(id){
 function getFilteredItems(){
   const search = document.getElementById('searchInput').value.trim().toLowerCase();
   const filter = document.getElementById('filterStatus').value;
+  const supervisorFiltro = document.getElementById('filterSupervisor').value;
 
   return items.filter(it=>{
     const matchesSearch = !search || it.loja.toLowerCase().includes(search) || (it.titulo||'').toLowerCase().includes(search);
     const c = calc(it);
     const matchesFilter = filter==='todos' || (filter==='fora' && c.fora) || (filter==='dentro' && !c.fora);
-    return matchesSearch && matchesFilter;
+    const matchesSupervisor = supervisorFiltro==='todos' || (it.supervisor||'') === supervisorFiltro;
+    return matchesSearch && matchesFilter && matchesSupervisor;
   });
 }
 
+function atualizarOpcoesSupervisor(){
+  const select = document.getElementById('filterSupervisor');
+  const valorAtual = select.value;
+
+  const supervisores = [...new Set(items.map(it=>(it.supervisor||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+  select.innerHTML = '<option value="todos">Todos os supervisores</option>' +
+    supervisores.map(s=>`<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`).join('');
+
+  // mantém a seleção anterior se ainda existir na lista
+  if(supervisores.includes(valorAtual) || valorAtual==='todos'){
+    select.value = valorAtual;
+  }
+}
+
 function render(){
+  atualizarOpcoesSupervisor();
   const filtered = getFilteredItems();
 
   const tbody = document.getElementById('tbody');
@@ -609,6 +637,7 @@ function render(){
       <td class="produto-cell" title="${escapeAttr(it.titulo||'')}">${escapeHtml(it.titulo||'—')}</td>
       <td><span class="badge ${c.fora?'danger':'success'}">${c.fora?'Fora do PMA':'Dentro do PMA'}</span></td>
       <td><span class="badge" style="background:var(--surface-2); color:var(--text-muted);">${escapeHtml(detectMarketplace(it.link))}</span></td>
+      <td>${escapeHtml(it.supervisor || '—')}</td>
       <td><a class="link-pill" href="${escapeAttr(it.link)}" target="_blank" rel="noopener">Ver anúncio ↗</a></td>
       <td class="mono">${fmtBRL.format(it.pma)}</td>
       <td class="mono">${fmtBRL.format(it.preco)}</td>
@@ -662,6 +691,8 @@ function gerarRelatorioPDF(){
   const searchTerm = document.getElementById('searchInput').value.trim();
   const filterStatus = document.getElementById('filterStatus').value;
   const filtroStatusTexto = filterStatus==='fora' ? 'Fora do PMA' : filterStatus==='dentro' ? 'Dentro do PMA' : 'Todos os status';
+  const filterSupervisor = document.getElementById('filterSupervisor').value;
+  const filtroSupervisorTexto = filterSupervisor==='todos' ? 'Todos' : filterSupervisor;
 
   function novaLinha(altura){
     if(y + altura > pageHeight - 40){
@@ -678,7 +709,7 @@ function gerarRelatorioPDF(){
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   doc.setTextColor(100);
-  doc.text(`Filtro de busca: ${searchTerm || '(nenhum)'}   •   Status: ${filtroStatusTexto}`, marginX, y);
+  doc.text(`Filtro de busca: ${searchTerm || '(nenhum)'}   •   Status: ${filtroStatusTexto}   •   Supervisor: ${filtroSupervisorTexto}`, marginX, y);
   y += 13;
   doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')}   •   ${filtered.length} item(ns)`, marginX, y);
   doc.setTextColor(0);
@@ -695,7 +726,7 @@ function gerarRelatorioPDF(){
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9.5);
-    const tituloLinhas = doc.splitTextToSize(`Produto: ${it.titulo || '—'}`, pageWidth - marginX*2);
+    const tituloLinhas = doc.splitTextToSize(`Produto: ${it.titulo || '—'}   •   Supervisor: ${it.supervisor || '—'}`, pageWidth - marginX*2);
     doc.text(tituloLinhas, marginX, y);
     y += tituloLinhas.length * 12;
 
@@ -899,6 +930,7 @@ document.getElementById('btnAtualizar').addEventListener('click', ()=>{ loadItem
 document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
 document.getElementById('searchInput').addEventListener('input', render);
 document.getElementById('filterStatus').addEventListener('change', render);
+document.getElementById('filterSupervisor').addEventListener('change', render);
 
 loadItems();
 </script>
